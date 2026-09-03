@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#14151a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Shaken, Maybe Stirred</title>
+<style>
+  :root{ --ink:#f2efe9; --dim:#8d8878; --bg:#14151a; --line:#2c2e36; --term:#7dd88f; }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html{ -webkit-text-size-adjust:100%; }
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font:17px/1.6 Georgia,'Iowan Old Style','Times New Roman',serif;
+    padding: calc(40px + env(safe-area-inset-top)) calc(14px + env(safe-area-inset-right))
+             calc(60px + env(safe-area-inset-bottom)) calc(14px + env(safe-area-inset-left));
+    display:flex; justify-content:center;
+  }
+  main{ width:100%; max-width:460px; }
+  .kicker{ font:11px/1 -apple-system,'Helvetica Neue',Arial,sans-serif;
+           letter-spacing:.28em; text-transform:uppercase; color:var(--dim); }
+  h1{ font-weight:normal; font-size:32px; margin:14px 0 4px; }
+  .sub{ font-style:italic; color:var(--dim); margin:0 0 30px; }
+  p{ margin:0 0 18px; }
+  hr{ border:0; border-top:1px solid var(--line); margin:34px 0; }
+
+  .rail{ display:flex; margin:30px 0 4px; }
+  .mark{ flex:1 1 0; min-width:0; min-height:54px; padding:0; background:none; border:0;
+         cursor:pointer; touch-action:manipulation; -webkit-user-select:none; user-select:none;
+         display:flex; align-items:center; justify-content:center; }
+  .pip{ width:24px; height:24px; border-radius:50%; border:1.5px solid var(--ink);
+        transition:background .12s ease, transform .12s ease; }
+  .mark[aria-pressed="true"] .pip{ background:var(--ink); }
+  .mark:active .pip{ transform:scale(.88); }
+  .readout{ font:14px/1 ui-monospace,'SF Mono',Menlo,monospace; letter-spacing:.62em;
+            text-indent:.62em; color:var(--dim); text-align:center; margin:8px 0 26px; }
+
+  .row{ display:flex; gap:10px; }
+  button.go,button.reset{ font:12px/1 -apple-system,'Helvetica Neue',Arial,sans-serif;
+    letter-spacing:.2em; text-transform:uppercase; min-height:50px; padding:0 18px;
+    border-radius:2px; cursor:pointer; touch-action:manipulation; }
+  button.go{ flex:1; color:var(--bg); background:var(--ink); border:0; }
+  button.reset{ flex:0 0 32%; color:var(--dim); background:transparent; border:1px solid var(--line); }
+
+  ol{ padding-left:20px; color:var(--dim); } ol b{ color:var(--ink); font-weight:normal; }
+  ol li{ margin-bottom:6px; }
+  footer{ margin-top:38px; font-size:15px; color:var(--dim); }
+
+  /* ---------- terminal ---------- */
+  #stage{ position:fixed; inset:0; background:#07080b; z-index:50; display:none;
+          flex-direction:column; overflow:hidden;
+          padding: calc(28px + env(safe-area-inset-top)) 18px
+                   calc(28px + env(safe-area-inset-bottom)) 18px; }
+  #stage.on{ display:flex; }
+  #term{ font:13px/1.75 ui-monospace,'SF Mono',Menlo,monospace; color:var(--term);
+         white-space:pre-wrap; word-break:break-word; flex:1; overflow:hidden; }
+  #term .warn{ color:#e8c26a; } #term .bad{ color:#e07a7a; }
+  #skip{ position:absolute; right:14px; bottom:calc(14px + env(safe-area-inset-bottom));
+         font:11px/1 ui-monospace,Menlo,monospace; letter-spacing:.18em; color:#3f4650;
+         background:none; border:0; padding:12px; }
+
+  #reveal{ position:absolute; inset:0; display:none; align-items:center; justify-content:center;
+           padding:28px; text-align:center; }
+  #reveal.on{ display:flex; }
+  #reveal .tag{ font:11px/1 ui-monospace,Menlo,monospace; letter-spacing:.3em;
+                color:var(--term); margin-bottom:20px; }
+  #reveal .answer{ font:26px/1.35 Georgia,serif; color:var(--ink); }
+  #reveal .close{ margin-top:32px; font:11px/1 ui-monospace,Menlo,monospace;
+                  letter-spacing:.2em; color:var(--dim); background:none;
+                  border:1px solid var(--line); padding:14px 20px; }
+
+  /* ---------- windows ---------- */
+  #wu{ position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+       width:min(360px,92%); background:#fbfbfb; color:#1b1b1b;
+       font:13px/1.55 'Segoe UI',-apple-system,'Helvetica Neue',sans-serif;
+       border-radius:8px; box-shadow:0 24px 60px rgba(0,0,0,.65); display:none;
+       overflow:hidden; }
+  #wu.on{ display:block; }
+  #wu .chrome{ display:flex; align-items:center; gap:8px; padding:9px 12px;
+               background:#f3f3f3; border-bottom:1px solid #e2e2e2; font-size:12px; color:#3c3c3c; }
+  #wu .glyph{ width:15px; height:15px; flex:none; display:grid;
+              grid-template-columns:1fr 1fr; grid-gap:1.6px; }
+  #wu .glyph i{ background:#0067b8; display:block; }
+  #wu .body{ padding:18px 18px 6px; }
+  #wu h4{ margin:0 0 8px; font-size:16px; font-weight:600; }
+  #wu p{ margin:0 0 8px; font-size:13px; color:#3c3c3c; }
+  #wu .btns{ padding:14px 18px 18px; display:flex; gap:8px; justify-content:flex-end; }
+  #wu button{ font:13px/1 'Segoe UI',-apple-system,sans-serif; padding:0 14px; min-height:34px;
+              border-radius:4px; cursor:pointer; touch-action:manipulation; }
+  #wu .primary{ background:#0067b8; color:#fff; border:1px solid #0067b8; }
+  #wu .ghost{ background:#fbfbfb; color:#1b1b1b; border:1px solid #c8c8c8; }
+
+  #boot{ position:fixed; inset:0; background:#0067b8; color:#fff; z-index:70; display:none;
+         flex-direction:column; align-items:center; justify-content:center; gap:26px;
+         font:15px/1.5 'Segoe UI',-apple-system,sans-serif; text-align:center; padding:30px; }
+  #boot.on{ display:flex; }
+  #boot .ring{ width:34px; height:34px; border:3px solid rgba(255,255,255,.35);
+               border-top-color:#fff; border-radius:50%; animation:spin 1s linear infinite; }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+  #boot .pct{ font-size:20px; }
+  #boot .warnline{ font-size:13px; opacity:.85; }
+  #blackout{ position:fixed; inset:0; background:#000; z-index:80; display:none; }
+  #blackout.on{ display:block; }
+  @media (prefers-reduced-motion:reduce){ *{ transition:none !important; animation:none !important; } }
+</style>
+</head>
+<body>
+<main>
+  <p class="kicker">Shaken, Maybe Stirred</p>
+  <h1>The Index</h1>
+  <p class="sub">Home of the cards. More arrive here as they are made.</p>
+  <p>Eight marks, down the edge.</p>
+
+  <div class="rail" id="rail"></div>
+  <div class="readout" id="readout">00000000</div>
+
+  <div class="row">
+    <button class="go" id="go">Read</button>
+    <button class="reset" id="reset">Clear</button>
+  </div>
+
+  <hr>
+  <p class="kicker">The Collection</p>
+  <ol>
+    <li><b>No. 01 &mdash; Build.</b> Rhubarb &amp; Pool.</li>
+    <li><b>No. 02 &mdash; Stir.</b> Martinez.</li>
+    <li><b>No. 03 &mdash; Shake.</b> Bee's Knees.</li>
+  </ol>
+  <footer><p>REPLACE THIS PARAGRAPH with whatever you would have written in a birthday card.</p></footer>
+</main>
+
+<div id="stage">
+  <div id="term"></div>
+  <div id="reveal">
+    <div>
+      <div class="tag" id="revealTag">ACCESS GRANTED</div>
+      <div class="answer" id="answer"></div>
+      <button class="close" id="close">CLOSE</button>
+    </div>
+  </div>
+  <div id="wu">
+    <div class="chrome"><span class="glyph"><i></i><i></i><i></i><i></i></span>Windows Update</div>
+    <div class="body">
+      <h4>Restart to finish installing updates</h4>
+      <p>Your device will restart outside of active hours. Some apps may need to be reopened.</p>
+      <p style="color:#6a6a6a;font-size:12px;">Updates were installed 3 minutes ago.</p>
+    </div>
+    <div class="btns">
+      <button class="ghost" id="wuLater">Not now</button>
+      <button class="primary" id="wuNow">Restart now</button>
+    </div>
+  </div>
+</div>
+
+<div id="boot">
+  <div class="ring"></div>
+  <div class="pct" id="pct">Working on updates 0%</div>
+  <div class="warnline">Don't turn off your computer</div>
+</div>
+<div id="blackout"></div>
+
+<!--
+  Nothing to see here.
+  Tm90aGluZyBoZXJlIGVpdGhlci4gUmVwbGFjZSB0aGlzIGJsb2Igd2l0aCBzb21ldGhpbmcgb25s
+  eSB5b3UgdHdvIHdvdWxkIGdldC4gLS0gRA==
+-->
+
+<script>
+// ---------------------------------------------------------------
+// DAVID: to change an answer, open this page, open the console, run
+//     enc("10101101", "What is a heat pump?")
+// and paste the hex into VAULT under the same key.
+//   10101101 = card No. 01 -> the tonic
+//   01011100 = card No. 02 -> the vermouth
+//   11010110 = card No. 03 -> the gin
+// ---------------------------------------------------------------
+const VAULT = {
+  "10101101": "7e7b0b0a66595145115942105011585450441140445c400e",
+  "01011100": "7f7a0a0b6659555e1055595511485f45105d51424511535855525b1145595510435447585f56105d515258585f540f",
+  "11010110": "7e7a0a0b74585510485e4511565e4357544510455f11575c44575611495e44421141595d5c5e460f"
+};
+const GIN = "11010110";
+
+const KEY_TAG = "OK::";
+const hex = b => [...b].map(x => x.toString(16).padStart(2,"0")).join("");
+const xorBytes = (bytes,bits) => bytes.map((v,i) => v ^ bits.charCodeAt(i % bits.length));
+function enc(bits,text){ return hex(xorBytes([...new TextEncoder().encode(KEY_TAG+text)], bits)); }
+function dec(bits,h){
+  if(!h) return null;
+  const b = h.match(/../g).map(x => parseInt(x,16));
+  const s = new TextDecoder().decode(new Uint8Array(xorBytes(b,bits)));
+  return s.startsWith(KEY_TAG) ? s.slice(KEY_TAG.length) : null;
+}
+
+const $ = id => document.getElementById(id);
+const rail=$("rail"), readout=$("readout"), stage=$("stage"), term=$("term"),
+      reveal=$("reveal"), answerEl=$("answer"), revealTag=$("revealTag"),
+      wu=$("wu"), boot=$("boot"), pct=$("pct"), blackout=$("blackout");
+
+for(let i=0;i<8;i++){
+  const b=document.createElement("button");
+  b.type="button"; b.className="mark"; b.setAttribute("aria-pressed","false");
+  b.setAttribute("aria-label","mark "+(i+1));
+  b.innerHTML='<span class="pip"></span>';
+  b.addEventListener("click",()=>{
+    b.setAttribute("aria-pressed", b.getAttribute("aria-pressed")==="true" ? "false":"true");
+    readout.textContent=bits();
+  });
+  rail.appendChild(b);
+}
+const bits=()=>[...rail.children].map(m=>m.getAttribute("aria-pressed")==="true"?"1":"0").join("");
+
+/* ---------------- the three runs ---------------- */
+
+// No. 01, the tonic. Clean. No errors. It just works.
+const S_TONIC=[
+  [200,"$ ./decrypt --card 01"],
+  [280,"handshake .................. ok"],
+  [200,"bypassing firewall ......... 12 of 12"],
+  [140,"4096-bit RSA cracked in 0.3s"],
+  [140,"MAINFRAME: HACKED"],
+  [280,"__END__"]
+];
+
+// No. 02, the vermouth. Something small goes wrong and fixes itself.
+const S_VERMOUTH=[
+  [200,"$ ./decrypt --card 02"],
+  [340,"bypassing firewall ......... 1 of 12"],
+  [260,"bypassing firewall ......... 7 of 12"],
+  [260,"bypassing firewall ......... 3 of 12"],
+  [300,'<span class="warn">firewall count inversely correlated to security levels</span>'],
+  [340,"building GUI interface in Visual Basic to trace the IP"],
+  [340,"IP traced: 127.0.0.1"],
+  [320,'<span class="warn">suspect is inside the house</span>'],
+  [340,"User request: enhance. enhance. enhance."],
+  [340,"MAINFRAME: HACKED (mostly)"],
+  [380,"__END__"]
+];
+
+// No. 03, the gin. He gets the answer, then Windows takes it away.
+const S_GIN_1=[
+  [200,"$ ./decrypt --card 03 --final"],
+  [340,"escalating privileges: sudo sudo sudo"],
+  [320,"downloading more RAM ....... 4 GB"],
+  [350,"npm install mainframe --force --legacy-peer-deps"],
+  [340,"deleting System32 to free up entropy"],
+  [340,'<span class="warn">that was probably fine</span>'],
+  [340,"MAINFRAME: HACKED"],
+  [450,"__END__"],
+  [600,"__WINDOWS__"]
+];
+
+// after the "restart"
+const S_GIN_2=[
+  [200,"$ ./decrypt --card 03 --again --no-updates"],
+  [340,"restoring System32 from the recycle bin"],
+  [320,"User requesting to disable Windows Update permanently"],
+  [320,"User request granted..."],
+  [340,'<span class="warn">Windows Update has been disabled for 4 minutes</span>'],
+  [400,"MAINFRAME: RE-HACKED"],
+  [380,"__END__"]
+];
+
+const S_BAD=[
+  [200,"$ ./decrypt --card ??"],
+  [340,"checking marks ............. 8"],
+  [320,'<span class="bad">checksum mismatch</span>'],
+  [320,"tracing intruder ..........."],
+  [320,"intruder appears to be aging rapidly"],
+  [340,'<span class="bad">ACCESS DENIED</span>'],
+  [380,"this incident has been reported to your brother"],
+  [380,"__END__"]
+];
+
+/* ---------------- sequencer ---------------- */
+let timer=null, queue=[], current=null, currentBits=null;
+const line = html => { term.innerHTML += (term.innerHTML ? "\n" : "") + "> " + html; };
+const stop = () => { if(timer){ clearTimeout(timer); timer=null; } };
+
+function step(){
+  if(!queue.length) return;
+  const [delay, txt] = queue.shift();
+  timer = setTimeout(()=>{
+    if(txt === "__END__"){ finish(current); step(); return; }
+    if(txt === "__WINDOWS__"){ wu.classList.add("on"); return; }
+    line(txt); step();
+  }, delay);
+}
+
+function run(script, answer, b){
+  stop();
+  current = answer; currentBits = b;
+  term.innerHTML=""; wu.classList.remove("on"); reveal.classList.remove("on");
+  stage.classList.add("on");
+  if(window.matchMedia("(prefers-reduced-motion: reduce)").matches){
+    queue=[]; finish(answer); return;
+  }
+  queue = script.map(x => x.slice());
+  step();
+}
+
+function finish(answer){
+  if(answer === null){
+    revealTag.textContent="ACCESS DENIED"; revealTag.style.color="#e07a7a";
+    answerEl.textContent="Wrong marks. Look again.";
+  } else {
+    revealTag.textContent="ACCESS GRANTED"; revealTag.style.color="";
+    answerEl.textContent=answer;
+  }
+  reveal.classList.add("on");
+}
+
+/* ---------------- the fake restart ---------------- */
+function fakeRestart(){
+  stop(); queue=[];
+  wu.classList.remove("on");
+  reveal.classList.remove("on");
+  stage.classList.remove("on");
+  boot.classList.add("on");
+  // stalls at 27, because it always stalls at 27
+  const steps=[[0,600],[9,500],[18,500],[27,2600],[23,900],[24,200],[61,600],[88,500],[99,1400]];
+  let i=0;
+  (function tick(){
+    if(i>=steps.length){
+      boot.classList.remove("on");
+      blackout.classList.add("on");
+      setTimeout(()=>{
+        blackout.classList.remove("on");
+        clearMarks();
+        sessionStorage.setItem("sms_gin_restarted","1");
+        window.scrollTo(0,0);
+      }, 1100);
+      return;
+    }
+    const [p,d]=steps[i++];
+    pct.textContent="Working on updates "+p+"%";
+    timer=setTimeout(tick,d);
+  })();
+}
+
+function clearMarks(){
+  [...rail.children].forEach(m=>m.setAttribute("aria-pressed","false"));
+  readout.textContent=bits();
+}
+
+/* ---------------- wiring ---------------- */
+$("go").addEventListener("click",()=>{
+  const b=bits();
+  const a = dec(b, VAULT[b]);
+  if(a === null){ run(S_BAD, null, b); return; }
+  if(b === GIN){
+    const done = sessionStorage.getItem("sms_gin_restarted")==="1";
+    run(done ? S_GIN_2 : S_GIN_1, a, b);
+  } else {
+    run(b === "10101101" ? S_TONIC : S_VERMOUTH, a, b);
+  }
+});
+$("reset").addEventListener("click", clearMarks);
+$("close").addEventListener("click",()=>{ stop(); queue=[]; stage.classList.remove("on"); });
+$("wuNow").addEventListener("click", fakeRestart);
+$("wuLater").addEventListener("click",()=>{
+  wu.classList.remove("on");
+  reveal.classList.remove("on");
+  term.innerHTML=""; line('<span class="warn">"Not now" was not one of the options</span>');
+  timer=setTimeout(fakeRestart, 1500);
+});
+
+readout.textContent=bits();
+</script>
+</body>
+</html>
