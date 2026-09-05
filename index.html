@@ -126,7 +126,7 @@
     <li><b>No. 03 &mdash; Shake.</b> Bee's Knees.</li>
     <li><b>No. 04 &mdash;</b> ...</li>
   </ol>
-  <footer><p>020901020926.</p></footer>
+  <footer><p>02 09 01 02 09 26</p></footer>
 </main>
 
 <div id="stage">
@@ -160,7 +160,7 @@
 <div id="blackout"></div>
 
 <!--
-  Ah don't worry. There's really nothing to see here :)
+  Nothing to see here.
   WW91IG5vc3kgKG5vdyBvbGQpIGdlZXplciEgSSBleHBlY3RlZCB5b3Ugd291bGRuJ3QgYmUgYWJsZSB0byBrZWVwIGF3YXkgZnJvbSBjaGVja2luZyBteSB3b3JrIDspKSBJIGhvcGUgeW91IGhhZCBhIHZlcnkgZnVuLCB2ZXJ5IGhhcHB5IGJpcnRoZGF5ISBQUyBJIGp1c3Qgd2FudCB0byBtYWtlIHN1cmUgeW91IGtub3cgaG93IGhhcHB5IGFuZCBwcm91ZCBvZiB5b3UgSSBhbSAobm93IEknbGwgc3RvcCwgY2F1c2UgZXd3IGNyaW5nZSk=
 -->
 
@@ -202,6 +202,29 @@ function blip(on){
     o.start(t); o.stop(t + 0.05);
   }catch(e){}
 }
+
+/* ---------------- fullscreen ----------------
+   fires on  very first touch, whatever it is, so the browser
+   chrome is gone before user finishes punching in a code.
+   if user deliberately leaves fullscreen they are never dragged back. */
+let fullOff = false;
+function goFull(){
+  try{
+    if(fullOff) return;
+    if(document.fullscreenElement || document.webkitFullscreenElement) return;
+    const el = document.documentElement;
+    const req = el.requestFullscreen || el.webkitRequestFullscreen;
+    if(!req) return;
+    const r = req.call(el);
+    if(r && r.catch) r.catch(()=>{});
+  }catch(e){}
+}
+["fullscreenchange","webkitfullscreenchange"].forEach(ev =>
+  document.addEventListener(ev, ()=>{
+    if(!document.fullscreenElement && !document.webkitFullscreenElement) fullOff = true;
+  })
+);
+document.addEventListener("pointerdown", goFull);
 
 const $ = id => document.getElementById(id);
 const rail=$("rail"), readout=$("readout"), stage=$("stage"), term=$("term"),
@@ -398,6 +421,7 @@ function clearMarks(){
 
 /* ---------------- wiring ---------------- */
 $("go").addEventListener("click",()=>{
+  goFull();
   const b=bits();
   const a = dec(b, VAULT[b]);
   if(a === null){ run(denialScript(), null, b); return; }
@@ -425,3 +449,4 @@ console.log("%cI mean... it makes sense you are snooping around.",
 </script>
 </body>
 </html>
+
