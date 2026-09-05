@@ -56,11 +56,8 @@
                    calc(28px + env(safe-area-inset-bottom)) 18px; }
   #stage.on{ display:flex; }
   #term{ font:13px/1.75 ui-monospace,'SF Mono',Menlo,monospace; color:var(--term);
-         white-space:pre-wrap; word-break:break-word; flex:1; overflow:hidden; }
+         white-space:pre-wrap; word-break:break-word; flex:1; overflow:auto; }
   #term .warn{ color:#e8c26a; } #term .bad{ color:#e07a7a; }
-  #skip{ position:absolute; right:14px; bottom:calc(14px + env(safe-area-inset-bottom));
-         font:11px/1 ui-monospace,Menlo,monospace; letter-spacing:.18em; color:#3f4650;
-         background:none; border:0; padding:12px; }
 
   #reveal{ position:absolute; inset:0; display:none; align-items:center; justify-content:center;
            padding:28px; text-align:center; }
@@ -104,14 +101,13 @@
   #boot .warnline{ font-size:13px; opacity:.85; }
   #blackout{ position:fixed; inset:0; background:#000; z-index:80; display:none; }
   #blackout.on{ display:block; }
-  @media (prefers-reduced-motion:reduce){ *{ transition:none !important; animation:none !important; } }
 </style>
 </head>
 <body>
 <main>
   <p class="kicker">Shaken, Maybe Stirred</p>
   <h1>The Index</h1>
-  <p class="sub"> The secure home of the cards.</p>
+  <p class="sub">The secure home of the cards.</p>
   <p>Your <b>friendly</b> companion to discovering the whereabouts of strangely misplaced items.</p>
 
   <div class="rail" id="rail"></div>
@@ -128,8 +124,9 @@
     <li><b>No. 01 &mdash; Build.</b> Rhubarb &amp; Pool.</li>
     <li><b>No. 02 &mdash; Stir.</b> Martinez.</li>
     <li><b>No. 03 &mdash; Shake.</b> Bee's Knees.</li>
+    <li><b>No. 04 &mdash;</b> ...</li>
   </ol>
-  <footer><p>020926.</p></footer>
+  <footer><p>020901020926.</p></footer>
 </main>
 
 <div id="stage">
@@ -163,20 +160,11 @@
 <div id="blackout"></div>
 
 <!--
-  Nothing to see here.
-  Tm90aGluZyBoZXJlIGVpdGhlci4gUmVwbGFjZSB0aGlzIGJsb2Igd2l0aCBzb21ldGhpbmcgb25s
-  eSB5b3UgdHdvIHdvdWxkIGdldC4gLS0gRA==
+  Ah don't worry. There's really nothing to see here :)
+  WW91IG5vc3kgKG5vdyBvbGQpIGdlZXplciEgSSBleHBlY3RlZCB5b3Ugd291bGRuJ3QgYmUgYWJsZSB0byBrZWVwIGF3YXkgZnJvbSBjaGVja2luZyBteSB3b3JrIDspKSBJIGhvcGUgeW91IGhhZCBhIHZlcnkgZnVuLCB2ZXJ5IGhhcHB5IGJpcnRoZGF5ISBQUyBJIGp1c3Qgd2FudCB0byBtYWtlIHN1cmUgeW91IGtub3cgaG93IGhhcHB5IGFuZCBwcm91ZCBvZiB5b3UgSSBhbSAobm93IEknbGwgc3RvcCwgY2F1c2UgZXd3IGNyaW5nZSk=
 -->
 
 <script>
-// ---------------------------------------------------------------
-// DAVID: to change an answer, open this page, open the console, run
-//     enc("10101101", "What is a heat pump?")
-// and paste the hex into VAULT under the same key.
-//   10101101 = card No. 01 -> the tonic
-//   01011100 = card No. 02 -> the vermouth
-//   11010110 = card No. 03 -> the gin
-// ---------------------------------------------------------------
 const VAULT = {
   "10101101": "7e7b0b0a66595145115942105011585450441140445c400e",
   "01011100": "7f7a0a0b6659555e1055595511485f45105d51424511535855525b1145595510435447585f56105d515258585f540f",
@@ -188,11 +176,31 @@ const KEY_TAG = "OK::";
 const hex = b => [...b].map(x => x.toString(16).padStart(2,"0")).join("");
 const xorBytes = (bytes,bits) => bytes.map((v,i) => v ^ bits.charCodeAt(i % bits.length));
 function enc(bits,text){ return hex(xorBytes([...new TextEncoder().encode(KEY_TAG+text)], bits)); }
+function addCard(bits,text){ console.log('  "'+bits+'": "'+enc(bits,text)+'",'); }
 function dec(bits,h){
   if(!h) return null;
   const b = h.match(/../g).map(x => parseInt(x,16));
   const s = new TextDecoder().decode(new Uint8Array(xorBytes(b,bits)));
   return s.startsWith(KEY_TAG) ? s.slice(KEY_TAG.length) : null;
+}
+
+/* ---------------- feedback ---------------- */
+let actx=null;
+function blip(on){
+  try{ if(navigator.vibrate) navigator.vibrate(12); }catch(e){}
+  try{
+    if(!actx) actx = new (window.AudioContext||window.webkitAudioContext)();
+    if(actx.state === "suspended") actx.resume();
+    const t = actx.currentTime;
+    const o = actx.createOscillator(), g = actx.createGain();
+    o.type = "square";
+    o.frequency.setValueAtTime(on ? 1180 : 760, t);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.14, t + 0.004);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.045);
+    o.connect(g).connect(actx.destination);
+    o.start(t); o.stop(t + 0.05);
+  }catch(e){}
 }
 
 const $ = id => document.getElementById(id);
@@ -206,7 +214,9 @@ for(let i=0;i<8;i++){
   b.setAttribute("aria-label","mark "+(i+1));
   b.innerHTML='<span class="pip"></span>';
   b.addEventListener("click",()=>{
-    b.setAttribute("aria-pressed", b.getAttribute("aria-pressed")==="true" ? "false":"true");
+    const on = b.getAttribute("aria-pressed") !== "true";
+    b.setAttribute("aria-pressed", on ? "true":"false");
+    blip(on);
     readout.textContent=bits();
   });
   rail.appendChild(b);
@@ -215,7 +225,7 @@ const bits=()=>[...rail.children].map(m=>m.getAttribute("aria-pressed")==="true"
 
 /* ---------------- the three runs ---------------- */
 
-// No. 01, the tonic. Clean. No errors. It just works.
+// No. 01
 const S_TONIC=[
   [100,"$ ./decrypt --card 01"],
   [180,"handshake .................. ok"],
@@ -225,7 +235,7 @@ const S_TONIC=[
   [100,"__END__"]
 ];
 
-// No. 02, the vermouth. Something small goes wrong and fixes itself.
+// No. 02
 const S_VERMOUTH=[
   [200,"$ ./decrypt --card 02"],
   [340,"bypassing firewall ......... 1 of 12"],
@@ -240,7 +250,7 @@ const S_VERMOUTH=[
   [380,"__END__"]
 ];
 
-// No. 03, the gin. He gets the answer, then Windows takes it away.
+// No. 03
 const S_GIN_1=[
   [200,"$ ./decrypt --card 03 --final"],
   [340,"escalating privileges: sudo sudo sudo"],
@@ -265,17 +275,56 @@ const S_GIN_2=[
   [380,"__END__"]
 ];
 
-const S_BAD=[
+// any code in VAULT that isn't one of the three cards lands here
+const S_EXTRA=[
+  [200,"$ ./decrypt --card ??"],
+  [300,"unlisted entry found"],
+  [320,"__END__"]
+];
+
+const SCRIPTS = { "10101101":S_TONIC, "01011100":S_VERMOUTH };
+
+const S_BAD_HEAD=[
   [200,"$ ./decrypt --card ??"],
   [340,"checking marks ............. 8"],
-  [320,'<span class="bad">checksum mismatch</span>'],
-  [320,"tracing intruder ..........."],
-  [320,"intruder appears to be aging rapidly"],
-  [340,'<span class="bad">ACCESS DENIED</span>'],
-  [380,"this incident will be reported to the appropriate authorities"],
-  [340,'<span class="warn">report succesfully sent to your brother</span>'],
-  [380,"__END__"]
+  [320,'<span class="bad">checksum mismatch</span>']
 ];
+
+// cycles in order, one per wrong attempt. add as many as you like.
+const DENIALS=[
+  [
+    [320,"tracing intruder ..........."],
+    [320,"intruder appears to be aging rapidly"],
+    [340,'<span class="bad">ACCESS DENIED</span>'],
+    [380,"this incident will be reported to the appropriate authorities"],
+    [340,'<span class="warn">report successfully sent to your brother</span>']
+  ],
+  [
+    [320,"cross-referencing against The Collection"],
+    [320,"no match in 3 of 3 records"],
+    [340,'<span class="bad">ACCESS DENIED</span>'],
+    [380,'<span class="warn">the marks are printed on the card, not vibes</span>']
+  ],
+  [
+    [320,"running biometric check ...."],
+    [320,"subject age: 25, allegedly"],
+    [340,'<span class="bad">ACCESS DENIED</span>'],
+    [380,"suggest holding the card the right way up"]
+  ],
+  [
+    [320,"attempt logged"],
+    [320,"previous attempts: several"],
+    [340,'<span class="bad">ACCESS DENIED</span>'],
+    [380,"security has been notified"],
+    [340,'<span class="warn">security is also your brother</span>']
+  ]
+];
+
+let badCount=0;
+function denialScript(){
+  const tail = DENIALS[badCount++ % DENIALS.length];
+  return [...S_BAD_HEAD, ...tail, [380,"__END__"]];
+}
 
 /* ---------------- sequencer ---------------- */
 let timer=null, queue=[], current=null, currentBits=null;
@@ -297,9 +346,6 @@ function run(script, answer, b){
   current = answer; currentBits = b;
   term.innerHTML=""; wu.classList.remove("on"); reveal.classList.remove("on");
   stage.classList.add("on");
-  if(window.matchMedia("(prefers-reduced-motion: reduce)").matches){
-    queue=[]; finish(answer); return;
-  }
   queue = script.map(x => x.slice());
   step();
 }
@@ -323,7 +369,7 @@ function fakeRestart(){
   stage.classList.remove("on");
   boot.classList.add("on");
   // stalls at 27, because it always stalls at 27
-  const steps=[[0,600],[9,500],[18,500],[27,2600],[23,900],[24,200],[61,600],[88,500],[99,1400]];
+  const steps=[[0,600],[9,500],[18,500],[27,2600],[23,900],[24,500],[61,600],[88,500],[99,1400]];
   let i=0;
   (function tick(){
     if(i>=steps.length){
@@ -333,6 +379,8 @@ function fakeRestart(){
         blackout.classList.remove("on");
         clearMarks();
         sessionStorage.setItem("sms_gin_restarted","1");
+        console.log("%cI mean... it makes sense you are snooping around.",
+            "color:#7dd88f; font:13px ui-monospace");
         window.scrollTo(0,0);
       }, 1100);
       return;
@@ -352,12 +400,12 @@ function clearMarks(){
 $("go").addEventListener("click",()=>{
   const b=bits();
   const a = dec(b, VAULT[b]);
-  if(a === null){ run(S_BAD, null, b); return; }
+  if(a === null){ run(denialScript(), null, b); return; }
   if(b === GIN){
     const done = sessionStorage.getItem("sms_gin_restarted")==="1";
     run(done ? S_GIN_2 : S_GIN_1, a, b);
   } else {
-    run(b === "10101101" ? S_TONIC : S_VERMOUTH, a, b);
+    run(SCRIPTS[b] || S_EXTRA, a, b);
   }
 });
 $("reset").addEventListener("click", clearMarks);
@@ -371,6 +419,9 @@ $("wuLater").addEventListener("click",()=>{
 });
 
 readout.textContent=bits();
+
+console.log("%cI mean... it makes sense you are snooping around.",
+            "color:#7dd88f; font:13px ui-monospace");
 </script>
 </body>
 </html>
