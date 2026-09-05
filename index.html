@@ -45,6 +45,12 @@
   button.go{ flex:1; color:var(--bg); background:var(--ink); border:0; }
   button.reset{ flex:0 0 32%; color:var(--dim); background:transparent; border:1px solid var(--line); }
 
+  button.refull{ display:none; width:100%; margin-top:10px; min-height:44px;
+    font:11px/1 ui-monospace,Menlo,monospace; letter-spacing:.18em; text-transform:uppercase;
+    color:var(--dim); background:transparent; border:1px dashed var(--line);
+    border-radius:2px; cursor:pointer; touch-action:manipulation; }
+  button.refull.on{ display:block; }
+
   ol{ padding-left:20px; color:var(--dim); } ol b{ color:var(--ink); font-weight:normal; }
   ol li{ margin-bottom:6px; }
   footer{ margin-top:38px; font-size:15px; color:var(--dim); }
@@ -121,6 +127,7 @@
     <button class="go" id="go">Read</button>
     <button class="reset" id="reset">Clear</button>
   </div>
+  <button class="refull" id="refull">Restore fullscreen</button>
 
   <hr>
   <p class="kicker">The Collection</p>
@@ -130,7 +137,6 @@
     <li><b>No. 03 &mdash; Shake.</b> Bee's Knees.</li>
     <li><b>No. 04 &mdash;</b> ...</li>
   </ol>
-  <footer><p>Davidos & Co. Inc. Ltd.</p></footer>
 </main>
 
 <div id="stage">
@@ -208,8 +214,8 @@ function blip(on){
 }
 
 /* ---------------- fullscreen ---------------- */
-
 let fullOff = false;
+let syncRefull = () => {};
 function goFull(){
   try{
     if(fullOff) return;
@@ -224,6 +230,7 @@ function goFull(){
 ["fullscreenchange","webkitfullscreenchange"].forEach(ev =>
   document.addEventListener(ev, ()=>{
     if(!document.fullscreenElement && !document.webkitFullscreenElement) fullOff = true;
+    syncRefull();
   })
 );
 document.addEventListener("pointerdown", goFull);
@@ -341,7 +348,7 @@ const DENIALS=[
     [320,"previous attempts: several"],
     [340,'<span class="bad">ACCESS DENIED</span>'],
     [380,"security has been notified"],
-    [340,'<span class="warn">David is too tired to respond</span>']
+    [340,'<span class="warn">security is also your brother</span>']
   ]
 ];
 
@@ -434,6 +441,40 @@ $("go").addEventListener("click",()=>{
     run(SCRIPTS[b] || S_EXTRA, a, b);
   }
 });
+/* FS_DEBUG: true = button always visible and reports what happened,
+   so you can test on a phone with no console. Set to false when done. */
+const FS_DEBUG = true;
+
+const refull = $("refull");
+const fsSupported = !!(document.documentElement.requestFullscreen ||
+                       document.documentElement.webkitRequestFullscreen);
+const inFullscreen = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
+const label = t => { refull.textContent = t; };
+
+syncRefull = () => {
+  if(FS_DEBUG){ refull.classList.toggle("on", !inFullscreen()); return; }
+  refull.classList.toggle("on", fsSupported && fullOff && !inFullscreen());
+};
+
+refull.addEventListener("click",()=>{
+  fullOff = false;
+  const el = document.documentElement;
+  const req = el.requestFullscreen || el.webkitRequestFullscreen;
+  if(!req){ label("no fullscreen api here"); return; }
+  label("requesting ...");
+  let r;
+  try{ r = req.call(el); }
+  catch(e){ label("threw: " + (e && e.name ? e.name : "error")); return; }
+  if(r && r.catch) r.catch(e => label("refused: " + (e && e.name ? e.name : "unknown")));
+  setTimeout(()=>{
+    if(inFullscreen()) label("Restore fullscreen");
+    else if(refull.textContent === "requesting ...") label("api present, no effect");
+    syncRefull();
+  }, 600);
+});
+
+syncRefull();
+
 $("reset").addEventListener("click", clearMarks);
 $("close").addEventListener("click",()=>{ stop(); queue=[]; stage.classList.remove("on"); });
 $("wuNow").addEventListener("click", fakeRestart);
@@ -451,5 +492,6 @@ console.log("%cI mean... it makes sense you are snooping around.",
 </script>
 </body>
 </html>
+
 
 
