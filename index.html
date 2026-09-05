@@ -55,6 +55,10 @@
           padding: calc(28px + env(safe-area-inset-top)) 18px
                    calc(28px + env(safe-area-inset-bottom)) 18px; }
   #stage.on{ display:flex; }
+  /* in fullscreen the browser draws its own exit button over the page,
+     so push the terminal text clear of the top corners */
+  :fullscreen #stage{ padding-top:80px; }
+  :-webkit-full-screen #stage{ padding-top:80px; }
   #term{ font:13px/1.75 ui-monospace,'SF Mono',Menlo,monospace; color:var(--term);
          white-space:pre-wrap; word-break:break-word; flex:1; overflow:auto; }
   #term .warn{ color:#e8c26a; } #term .bad{ color:#e07a7a; }
@@ -126,7 +130,7 @@
     <li><b>No. 03 &mdash; Shake.</b> Bee's Knees.</li>
     <li><b>No. 04 &mdash;</b> ...</li>
   </ol>
-  <footer><p>02 09 01 02 09 26</p></footer>
+  <footer><p>Davidos & Co. Inc. Ltd.</p></footer>
 </main>
 
 <div id="stage">
@@ -203,10 +207,8 @@ function blip(on){
   }catch(e){}
 }
 
-/* ---------------- fullscreen ----------------
-   fires on  very first touch, whatever it is, so the browser
-   chrome is gone before user finishes punching in a code.
-   if user deliberately leaves fullscreen they are never dragged back. */
+/* ---------------- fullscreen ---------------- */
+
 let fullOff = false;
 function goFull(){
   try{
@@ -339,7 +341,7 @@ const DENIALS=[
     [320,"previous attempts: several"],
     [340,'<span class="bad">ACCESS DENIED</span>'],
     [380,"security has been notified"],
-    [340,'<span class="warn">security is also your brother</span>']
+    [340,'<span class="warn">David is too tired to respond</span>']
   ]
 ];
 
@@ -449,4 +451,5 @@ console.log("%cI mean... it makes sense you are snooping around.",
 </script>
 </body>
 </html>
+
 
